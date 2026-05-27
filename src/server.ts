@@ -2,6 +2,8 @@ import express from "express";
 
 const app = express();
 
+app.use(express.json());
+
 const hotels = [
   {
     id: 1,
@@ -28,7 +30,7 @@ app.get("/hotels", (req, res) => {
 app.get("/hotels/:id", (req, res) => {
   const hotelId = Number(req.params.id);
 
-  const hotel = hotels.find((h) => h.id === hotelId);
+  const hotel = hotels.find((hotel) => hotel.id === hotelId);
 
   if (!hotel) {
     return res.status(404).json({
@@ -39,7 +41,7 @@ app.get("/hotels/:id", (req, res) => {
   res.json(hotel);
 });
 
-const rooms = [
+const rooms = [ 
   {
     id: 1,
     hotelId: 1,
@@ -63,6 +65,8 @@ const rooms = [
   }
 ];
 
+const bookings: any[] = [];
+
 app.get("/hotels/:id/rooms", (req, res) => {
   const hotelId = Number(req.params.id);
 
@@ -73,4 +77,25 @@ app.get("/hotels/:id/rooms", (req, res) => {
 
 app.listen(3000, () => {
   console.log("Server running on port 3000");
+});   
+
+app.get("/bookings", (req, res) => {
+  res.json(bookings);
+});
+
+app.post("/bookings", (req, res) => {
+  const newBooking = req.body;
+
+  if (!newBooking.hotelId || !newBooking.guestName || !newBooking.nights) {
+  return res.status(400).json({
+    message: "hotelId, guestName, and nights are required"
+  });
+}
+
+  bookings.push(newBooking);
+
+  res.status(201).json({
+    message: "Booking created successfully",
+    booking: newBooking
+  });
 });
