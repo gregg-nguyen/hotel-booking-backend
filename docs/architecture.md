@@ -1,8 +1,11 @@
-Architecture V1
+# Hotel Booking Backend
 
+## Architecture V1
+Created: 2026-05-29
 
-Goal:
-Learn backend engineering through a hotel booking system.
+### Goal
+
+Learn backend engineering through building a hotel booking system.
 
 Core entities:
 - Hotel
