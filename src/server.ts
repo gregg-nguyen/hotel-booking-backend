@@ -27,6 +27,16 @@ app.get("/hotels", (req, res) => {
   res.json(hotels);
 });
 
+app.get("/hotels/city/:city", (req, res) => {
+  const city = req.params.city;
+
+  const filteredHotels = hotels.filter(
+    (hotel) => hotel.city.toLowerCase() === city.toLowerCase()
+  );
+
+  res.json(filteredHotels);
+});
+
 app.get("/hotels/:id", (req, res) => {
   const hotelId = Number(req.params.id);
 
@@ -67,6 +77,10 @@ const rooms = [
 
 const bookings: any[] = [];
 
+function findBookingById(id: number) {
+  return bookings.find((booking) => booking.id === id);
+}
+
 app.get("/hotels/:id/rooms", (req, res) => {
   const hotelId = Number(req.params.id);
 
@@ -83,8 +97,25 @@ app.get("/bookings", (req, res) => {
   res.json(bookings);
 });
 
+app.get("/bookings/:id", (req, res) => {
+  const bookingId = Number(req.params.id);
+
+  const booking = findBookingById(bookingId);
+
+  if (!booking) {
+    return res.status(404).json({
+      message: "Booking not found"
+    });
+  }
+
+  res.json(booking);
+});
+
 app.post("/bookings", (req, res) => {
-  const newBooking = req.body;
+  const newBooking = {
+  id: bookings.length + 1,
+  ...req.body
+};
 
   if (!newBooking.hotelId || !newBooking.guestName || !newBooking.nights) {
   return res.status(400).json({
@@ -99,3 +130,43 @@ app.post("/bookings", (req, res) => {
     booking: newBooking
   });
 });
+
+app.delete("/bookings/:id", (req, res) => {
+  const bookingId = Number(req.params.id);
+
+  const bookingIndex = bookings.findIndex(
+    (booking) => booking.id === bookingId
+  );
+
+  if (bookingIndex === -1) {
+    return res.status(404).json({
+      message: "Booking not found"
+    });
+  }
+
+  bookings.splice(bookingIndex, 1);
+
+  res.json({
+    message: "Booking deleted successfully"
+  });
+});
+
+app.patch("/bookings/:id", (req, res) => {
+  const bookingId = Number(req.params.id);
+
+  const booking = findBookingById(bookingId);
+
+  if (!booking) {
+    return res.status(404).json({
+      message: "Booking not found"
+    });
+  }
+
+  Object.assign(booking, req.body);
+
+  res.json({
+    message: "Booking updated successfully",
+    booking: booking
+  });
+});
+
