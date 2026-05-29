@@ -87,11 +87,7 @@ app.get("/hotels/:id/rooms", (req, res) => {
   const hotelRooms = rooms.filter((room) => room.hotelId === hotelId);
 
   res.json(hotelRooms);
-});
-
-app.listen(3000, () => {
-  console.log("Server running on port 3000");
-});   
+}); 
 
 app.get("/bookings", (req, res) => {
   res.json(bookings);
@@ -170,3 +166,6 @@ app.patch("/bookings/:id", (req, res) => {
   });
 });
 
+app.listen(3000, () => {
+  console.log("Server running on port 3000");
+}); 
