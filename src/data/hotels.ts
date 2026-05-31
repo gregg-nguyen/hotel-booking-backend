@@ -1,4 +1,11 @@
-export const hotels = [
+export interface Hotel {
+  id: number;
+  name: string;
+  city: string;
+  price: number;
+}
+
+export const hotels: Hotel[] = [
   {
     id: 1,
     name: "Tokyo Grand Hotel",

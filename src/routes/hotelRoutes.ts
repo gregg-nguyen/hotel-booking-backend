@@ -13,6 +13,10 @@ router.get("/hotels", (req, res) => {
   res.json(hotels);
 });
 
+router.get("/rooms", (req, res) => {
+  res.json(rooms);
+});
+
 router.get("/hotels/city/:city", (req, res) => {
   const city = req.params.city;
 
