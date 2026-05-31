@@ -3,6 +3,8 @@ export interface Booking {
   hotelId: number;
   roomId: number;
   guestName: string;
+  checkInDate: string;
+  checkOutDate: string;
   nights: number;
   totalPrice: number;
 }

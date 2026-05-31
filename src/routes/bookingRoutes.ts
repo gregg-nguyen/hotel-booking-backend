@@ -4,6 +4,8 @@ import { hotels } from "../data/hotels";
 import { rooms } from "../data/rooms";
 import { findBookingById } from "../helpers/bookingHelpers";
 
+const MILLISECONDS_PER_DAY = 1000 * 60 * 60 * 24;
+
 const router = express.Router();
 
 router.get("/bookings", (req, res) => {
@@ -33,11 +35,18 @@ router.post("/bookings", (req, res) => {
   ...req.body
 };
 
-  if (!newBooking.hotelId || !newBooking.roomId || !newBooking.guestName || !newBooking.nights) {
-  return res.status(400).json({
-    message: "hotelId, roomId, guestName, and nights are required"
-  });
-}
+  if (
+    !newBooking.hotelId ||
+    !newBooking.roomId ||
+    !newBooking.guestName ||
+    !newBooking.checkInDate ||
+    !newBooking.checkOutDate
+    ) {
+
+    return res.status(400).json({
+      message: "hotelId, roomId, guestName, checkInDate, and checkOutDate are required"
+    });
+  }
 
   const foundHotel = hotels.find(
     (hotel) => hotel.id === Number(newBooking.hotelId)
@@ -46,6 +55,12 @@ router.post("/bookings", (req, res) => {
   if (!foundHotel) {
     return res.status(400).json({
       message: "Hotel not found"
+    });
+  }
+
+  if (isNaN(Number(newBooking.nights))) {
+    return res.status(400).json({
+      message: "nights must be a number"
     });
   }
 
@@ -66,14 +81,28 @@ router.post("/bookings", (req, res) => {
       message: "Room not found for this hotel"
     });
   }
+
+  const checkInDate = new Date(newBooking.checkInDate);
+  const checkOutDate = new Date(newBooking.checkOutDate);
+
+  const nights =
+    (checkOutDate.getTime() - checkInDate.getTime()) / MILLISECONDS_PER_DAY;
+
+  if (nights <= 0) {
+    return res.status(400).json({
+    message: "checkOutDate must be after checkInDate"
+    });
+  }
   
   const finalBooking = {
     id: bookings.length + 1,
     hotelId: Number(newBooking.hotelId),
     roomId: Number(newBooking.roomId),
     guestName: newBooking.guestName,
-    nights: Number(newBooking.nights),
-    totalPrice: foundRoom.price * Number(newBooking.nights)
+    checkInDate: newBooking.checkInDate,
+    checkOutDate: newBooking.checkOutDate,
+    nights: nights,
+    totalPrice: foundRoom.price * nights
   };
 
   bookings.push(finalBooking);
