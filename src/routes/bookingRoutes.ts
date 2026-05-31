@@ -1,5 +1,7 @@
-import express, { Router } from "express";
+import express from "express";
 import { bookings } from "../data/bookings";
+import { hotels } from "../data/hotels";
+import { rooms } from "../data/rooms";
 import { findBookingById } from "../helpers/bookingHelpers";
 
 const router = express.Router();
@@ -22,25 +24,68 @@ router.get("/bookings/:id", (req, res) => {
   res.json(booking);
 });
 
+
+
+
 router.post("/bookings", (req, res) => {
   const newBooking = {
   id: bookings.length + 1,
   ...req.body
 };
 
-  if (!newBooking.hotelId || !newBooking.guestName || !newBooking.nights) {
+  if (!newBooking.hotelId || !newBooking.roomId || !newBooking.guestName || !newBooking.nights) {
   return res.status(400).json({
-    message: "hotelId, guestName, and nights are required"
+    message: "hotelId, roomId, guestName, and nights are required"
   });
 }
 
-  bookings.push(newBooking);
+  const foundHotel = hotels.find(
+    (hotel) => hotel.id === Number(newBooking.hotelId)
+  );
+
+  if (!foundHotel) {
+    return res.status(400).json({
+      message: "Hotel not found"
+    });
+  }
+
+  if (Number(newBooking.nights) <= 0) {
+    return res.status(400).json({
+      message: "nights must be a positive number"
+    });
+  }
+
+  const foundRoom = rooms.find(
+    (room) =>
+      room.id === Number(newBooking.roomId) &&
+      room.hotelId === Number(newBooking.hotelId)
+  );
+
+  if (!foundRoom) {
+    return res.status(400).json({
+      message: "Room not found for this hotel"
+    });
+  }
+  
+  const finalBooking = {
+    id: bookings.length + 1,
+    hotelId: Number(newBooking.hotelId),
+    roomId: Number(newBooking.roomId),
+    guestName: newBooking.guestName,
+    nights: Number(newBooking.nights),
+    totalPrice: foundRoom.price * Number(newBooking.nights)
+  };
+
+  bookings.push(finalBooking);
 
   res.status(201).json({
     message: "Booking created successfully",
-    booking: newBooking
+    booking: finalBooking
   });
 });
+
+
+
 
 router.delete("/bookings/:id", (req, res) => {
   const bookingId = Number(req.params.id);
