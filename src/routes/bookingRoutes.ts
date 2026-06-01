@@ -58,18 +58,6 @@ router.post("/bookings", (req, res) => {
     });
   }
 
-  if (isNaN(Number(newBooking.nights))) {
-    return res.status(400).json({
-      message: "nights must be a number"
-    });
-  }
-
-  if (Number(newBooking.nights) <= 0) {
-    return res.status(400).json({
-      message: "nights must be a positive number"
-    });
-  }
-
   const foundRoom = rooms.find(
     (room) =>
       room.id === Number(newBooking.roomId) &&
