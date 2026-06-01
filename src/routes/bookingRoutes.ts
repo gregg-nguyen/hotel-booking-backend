@@ -82,6 +82,23 @@ router.post("/bookings", (req, res) => {
     });
   }
   
+  const overlappingBooking = bookings.find((booking) => {
+    const existingCheckInDate = new Date(booking.checkInDate);
+    const existingCheckOutDate = new Date(booking.checkOutDate);
+
+    return (
+      booking.roomId === Number(newBooking.roomId) &&
+      checkInDate < existingCheckOutDate &&
+      checkOutDate > existingCheckInDate
+    );
+  });
+
+  if (overlappingBooking) {
+    return res.status(400).json({
+      message: "Room is already booked for the selected dates"
+    });
+  }
+
   const finalBooking = {
     id: bookings.length + 1,
     hotelId: Number(newBooking.hotelId),
