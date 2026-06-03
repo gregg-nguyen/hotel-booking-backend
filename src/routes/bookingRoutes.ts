@@ -3,19 +3,29 @@ import { bookings } from "../data/bookings";
 import { hotels } from "../data/hotels";
 import { rooms } from "../data/rooms";
 import { findBookingById } from "../helpers/bookingHelpers";
+import pool from "../database/db";
 
 const MILLISECONDS_PER_DAY = 1000 * 60 * 60 * 24;
 
 const router = express.Router();
 
-router.get("/bookings", (req, res) => {
-  res.json(bookings);
+router.get("/bookings", async (req, res) => {
+  const result = await pool.query(
+    "SELECT * FROM bookings"
+  );
+
+  res.json(result.rows);
 });
 
-router.get("/bookings/:id", (req, res) => {
+router.get("/bookings/:id", async (req, res) => {
   const bookingId = Number(req.params.id);
 
-  const booking = findBookingById(bookingId);
+  const result = await pool.query(
+    "SELECT * FROM bookings WHERE id = $1",
+    [bookingId]
+  );
+
+  const booking = result.rows[0];
 
   if (!booking) {
     return res.status(404).json({
@@ -25,7 +35,6 @@ router.get("/bookings/:id", (req, res) => {
 
   res.json(booking);
 });
-
 
 
 
