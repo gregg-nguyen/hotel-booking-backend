@@ -1,6 +1,5 @@
 import express from "express";
-import { hotels } from "../data/hotels";
-import { rooms } from "../data/rooms";
+import pool from "../database/db";
 
 const router = express.Router();
 
@@ -9,28 +8,53 @@ router.get("/", (req, res) => {
   res.send("Hotel Booking Backend Running!");
 });
 
-router.get("/hotels", (req, res) => {
-  res.json(hotels);
-});
-
-router.get("/rooms", (req, res) => {
-  res.json(rooms);
-});
-
-router.get("/hotels/city/:city", (req, res) => {
-  const city = req.params.city;
-
-  const filteredHotels = hotels.filter(
-    (hotel) => hotel.city.toLowerCase() === city.toLowerCase()
+router.get("/hotels", async (req, res) => {
+  const result = await pool.query(
+    "SELECT * FROM hotels"
   );
 
-  res.json(filteredHotels);
+  res.json(result.rows);
 });
 
-router.get("/hotels/:id", (req, res) => {
+router.get("/rooms", async (req, res) => {
+  const result = await pool.query(
+    "SELECT * FROM rooms"
+  );
+
+  res.json(result.rows);
+});
+
+router.get("/hotels/:id/rooms", async (req, res) => {
   const hotelId = Number(req.params.id);
 
-  const hotel = hotels.find((hotel) => hotel.id === hotelId);
+  const result = await pool.query(
+    "SELECT * FROM rooms WHERE hotel_id = $1",
+    [hotelId]
+  );
+
+  res.json(result.rows);
+});
+
+router.get("/hotels/city/:city", async (req, res) => {
+  const city = req.params.city;
+
+  const result = await pool.query(
+    "SELECT * FROM hotels WHERE LOWER(city) = LOWER($1)",
+    [city]
+  );
+
+  res.json(result.rows);
+});
+
+router.get("/hotels/:id", async (req, res) => {
+  const hotelId = Number(req.params.id);
+
+  const result = await pool.query(
+    "SELECT * FROM hotels WHERE id = $1",
+    [hotelId]
+  );
+
+  const hotel = result.rows[0];
 
   if (!hotel) {
     return res.status(404).json({
@@ -39,14 +63,6 @@ router.get("/hotels/:id", (req, res) => {
   }
 
   res.json(hotel);
-});
-
-router.get("/hotels/:id/rooms", (req, res) => {
-  const hotelId = Number(req.params.id);
-
-  const hotelRooms = rooms.filter((room) => room.hotelId === hotelId);
-
-  res.json(hotelRooms);
 });
 
 export default router;

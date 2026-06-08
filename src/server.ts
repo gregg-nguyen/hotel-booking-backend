@@ -1,9 +1,5 @@
 import express from "express";
 
-import { rooms } from "./data/rooms";
-
-import { findBookingById } from "./helpers/bookingHelpers";
-
 import hotelRoutes from "./routes/hotelRoutes";
 import bookingRoutes from "./routes/bookingRoutes";
 

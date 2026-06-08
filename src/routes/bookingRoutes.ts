@@ -1,18 +1,23 @@
 import express from "express";
-import { bookings } from "../data/bookings";
-import { hotels } from "../data/hotels";
-import { rooms } from "../data/rooms";
-import { findBookingById } from "../helpers/bookingHelpers";
 import pool from "../database/db";
 
 const MILLISECONDS_PER_DAY = 1000 * 60 * 60 * 24;
 
 const router = express.Router();
 
+interface NewBookingRequest {
+  hotelId: number;
+  roomId: number;
+  guestName: string;
+  checkInDate: string;
+  checkOutDate: string;
+}
 
-
-
-
+interface UpdateBookingRequest {
+  guestName?: string;
+  checkInDate?: string;
+  checkOutDate?: string;
+}
 
 router.get("/bookings", async (req, res) => {
   const result = await pool.query(
@@ -41,16 +46,8 @@ router.get("/bookings/:id", async (req, res) => {
   res.json(booking);
 });
 
-
-
-
-
-
 router.post("/bookings", async (req, res) => {
-  const newBooking = {
-  id: bookings.length + 1,
-  ...req.body
-};
+  const newBooking = req.body as NewBookingRequest;
 
   if (
     !newBooking.hotelId ||
@@ -58,40 +55,44 @@ router.post("/bookings", async (req, res) => {
     !newBooking.guestName ||
     !newBooking.checkInDate ||
     !newBooking.checkOutDate
-    ) {
-
+  ) {
     return res.status(400).json({
-      message: "hotelId, roomId, guestName, checkInDate, and checkOutDate are required"
+      message: "All fields are required"
     });
   }
 
-  const foundHotel = hotels.find(
-    (hotel) => hotel.id === Number(newBooking.hotelId)
+  const hotelCheck = await pool.query(
+    "SELECT * FROM hotels WHERE id = $1",
+    [newBooking.hotelId]
   );
 
-  if (!foundHotel) {
+  if (hotelCheck.rowCount === 0) {
     return res.status(400).json({
       message: "Hotel not found"
     });
   }
 
-  const foundRoom = rooms.find(
-    (room) =>
-      room.id === Number(newBooking.roomId) &&
-      room.hotelId === Number(newBooking.hotelId)
+  const foundRoom = await pool.query(
+    "SELECT * FROM rooms WHERE id = $1 AND hotel_id = $2",
+    [newBooking.roomId, newBooking.hotelId]
   );
 
-  if (!foundRoom) {
+  if (foundRoom.rowCount === 0) {
     return res.status(400).json({
-      message: "Room not found for this hotel"
+      message: "Room not found in the specified hotel"
     });
   }
+
+  const room = foundRoom.rows[0];
+
+  const price = room.price;
 
   const checkInDate = new Date(newBooking.checkInDate);
   const checkOutDate = new Date(newBooking.checkOutDate);
 
-  const nights =
-    (checkOutDate.getTime() - checkInDate.getTime()) / MILLISECONDS_PER_DAY;
+  const nights = Math.ceil(
+  (checkOutDate.getTime() - checkInDate.getTime()) / MILLISECONDS_PER_DAY
+  );
 
   if (nights <= 0) {
     return res.status(400).json({
@@ -99,16 +100,22 @@ router.post("/bookings", async (req, res) => {
     });
   }
   
-  const overlappingBooking = bookings.find((booking) => {
-    const existingCheckInDate = new Date(booking.checkInDate);
-    const existingCheckOutDate = new Date(booking.checkOutDate);
+  const overlappingBookingResult = await pool.query(
+    `
+    SELECT *
+    FROM bookings
+    WHERE room_id = $1
+      AND check_in_date < $2
+      AND check_out_date > $3
+    `,
+    [
+      Number(newBooking.roomId),
+      newBooking.checkOutDate,
+      newBooking.checkInDate
+    ]
+  );
 
-    return (
-      booking.roomId === Number(newBooking.roomId) &&
-      checkInDate < existingCheckOutDate &&
-      checkOutDate > existingCheckInDate
-    );
-  });
+  const overlappingBooking = overlappingBookingResult.rows[0];
 
   if (overlappingBooking) {
     return res.status(400).json({
@@ -117,14 +124,13 @@ router.post("/bookings", async (req, res) => {
   }
 
   const finalBooking = {
-    id: bookings.length + 1,
     hotelId: Number(newBooking.hotelId),
     roomId: Number(newBooking.roomId),
     guestName: newBooking.guestName,
     checkInDate: newBooking.checkInDate,
     checkOutDate: newBooking.checkOutDate,
     nights: nights,
-    totalPrice: foundRoom.price * nights
+    totalPrice: price * nights
   };
 
   const result = await pool.query(
@@ -199,7 +205,7 @@ router.patch("/bookings/:id", async (req, res) => {
     guestName,
     checkInDate,
     checkOutDate,
-  } = req.body;
+  } = req.body as UpdateBookingRequest;
 
   const existingBookingResult = await pool.query(
     "SELECT * FROM bookings WHERE id = $1",
@@ -220,21 +226,25 @@ router.patch("/bookings/:id", async (req, res) => {
 
   const finalRoomId = existingBooking.room_id;
 
-  const foundRoom = rooms.find(
-    (room) => room.id === Number(finalRoomId)
+  const roomCheck = await pool.query(
+    "SELECT * FROM rooms WHERE id = $1",
+    [finalRoomId]
   );
 
-  if (!foundRoom) {
+    if (roomCheck.rowCount === 0) {
     return res.status(400).json({
       message: "Room not found"
     });
   }
 
+  const room = roomCheck.rows[0];
+
   const checkIn = new Date(finalCheckInDate);
   const checkOut = new Date(finalCheckOutDate);
 
-  const nights =
-    (checkOut.getTime() - checkIn.getTime()) / MILLISECONDS_PER_DAY;
+  const nights = Math.ceil(
+  (checkOut.getTime() - checkIn.getTime()) / MILLISECONDS_PER_DAY
+);
 
   if (nights <= 0) {
     return res.status(400).json({
@@ -242,7 +252,32 @@ router.patch("/bookings/:id", async (req, res) => {
     });
   }
 
-  const totalPrice = foundRoom.price * nights;
+  const overlappingBookingResult = await pool.query(
+    `
+    SELECT *
+    FROM bookings
+    WHERE room_id = $1
+      AND id != $2
+      AND check_in_date < $3
+      AND check_out_date > $4
+    `,
+    [
+      Number(finalRoomId),
+      bookingId,
+      finalCheckOutDate,
+      finalCheckInDate
+    ]
+  );
+
+  const overlappingBooking = overlappingBookingResult.rows[0];
+
+  if (overlappingBooking) {
+    return res.status(400).json({
+      message: "Room is already booked for the selected dates"
+    });
+  }
+
+  const totalPrice = room.price * nights;
 
   const result = await pool.query(
     `
