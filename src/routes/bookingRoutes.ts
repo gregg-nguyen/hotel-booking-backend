@@ -1,7 +1,7 @@
 import express from "express";
 import pool from "../database/db";
 import { AppError } from "../errors/AppError";
-import { error } from "console";
+import { validateCreateBooking } from "../middleware/validation";
 
 const MILLISECONDS_PER_DAY = 1000 * 60 * 60 * 24;
 
@@ -50,19 +50,8 @@ router.get("/bookings/:id", async (req, res, next) => {
   }
 });
 
-router.post("/bookings", async (req, res, next) => {
-  try {
+router.post("/bookings", validateCreateBooking, async (req, res, next) => {  try {
     const newBooking = req.body as NewBookingRequest;
-
-    if (
-      !newBooking.hotelId ||
-      !newBooking.roomId ||
-      !newBooking.guestName ||
-      !newBooking.checkInDate ||
-      !newBooking.checkOutDate
-    ) {
-      throw new AppError("Missing required fields", 400);
-    }
 
     const hotelCheck = await pool.query(
       "SELECT * FROM hotels WHERE id = $1",
