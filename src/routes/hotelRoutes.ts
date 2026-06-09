@@ -1,8 +1,8 @@
 import express from "express";
 import pool from "../database/db";
+import { AppError } from "../errors/AppError";
 
 const router = express.Router();
-
 
 router.get("/", (req, res) => {
   res.send("Hotel Booking Backend Running!");
