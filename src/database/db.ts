@@ -9,3 +9,5 @@ const pool = new Pool({
 });
 
 export default pool; // Allow other files to use this connection
+export { pool };
+
