@@ -139,6 +139,183 @@ describe("POST /bookings", () => {
   });
 });
 
+
+
+describe("PATCH /bookings/:id", () => {
+  it("returns 404 when booking does not exist", async () => {
+    const response = await request(app)
+      .patch("/bookings/999")
+      .send({
+        guestName: "Updated Name",
+      });
+
+    expect(response.status).toBe(404);
+
+    expect(response.body).toEqual({
+      success: false,
+      message: "Booking not found",
+    });
+  });
+
+  it("updates a booking when request data is valid", async () => {
+    const createResponse = await request(app)
+      .post("/bookings")
+      .send({
+        hotelId: 11,
+        roomId: 4,
+        guestName: "Patch Test",
+        checkInDate: "2027-02-01",
+        checkOutDate: "2027-02-04",
+      });
+
+    expect(createResponse.status).toBe(201);
+
+    const bookingId = createResponse.body.booking.id;
+    createdBookingIds.push(bookingId);
+
+    const patchResponse = await request(app)
+      .patch(`/bookings/${bookingId}`)
+      .send({
+        guestName: "Patch Test Updated",
+        checkInDate: "2027-02-05",
+        checkOutDate: "2027-02-08",
+      });
+
+    expect(patchResponse.status).toBe(200);
+
+    expect(patchResponse.body.message).toBe(
+      "Booking updated successfully"
+    );
+
+    expect(patchResponse.body.booking).toMatchObject({
+      id: bookingId,
+      hotel_id: 11,
+      room_id: 4,
+      guest_name: "Patch Test Updated",
+      nights: 3,
+      total_price: 510,
+    });
+  });
+
+  it("returns 400 when updated dates are invalid", async () => {
+    const createResponse = await request(app)
+      .post("/bookings")
+      .send({
+        hotelId: 11,
+        roomId: 4,
+        guestName: "Invalid Patch Test",
+        checkInDate: "2027-03-01",
+        checkOutDate: "2027-03-04",
+      });
+
+    const bookingId = createResponse.body.booking.id;
+    createdBookingIds.push(bookingId);
+
+    const patchResponse = await request(app)
+      .patch(`/bookings/${bookingId}`)
+      .send({
+        checkInDate: "2027-03-10",
+        checkOutDate: "2027-03-05",
+      });
+
+    expect(patchResponse.status).toBe(400);
+
+    expect(patchResponse.body).toEqual({
+      success: false,
+      message: "checkOutDate must be after checkInDate",
+    });
+  });
+
+  it("returns 400 when updated dates overlap another booking", async () => {
+    const createResponseA = await request(app).
+      post("/bookings")
+      .send({
+        hotelId: 11,
+        roomId: 4,
+        guestName: "Overlap Patch Test",
+        checkInDate: "2027-04-01",
+        checkOutDate: "2027-04-05",
+      });
+      
+      const bookingIdA = createResponseA.body.booking.id;
+      createdBookingIds.push(bookingIdA);
+
+    const createResponseB = await request(app)
+      .post("/bookings")
+      .send({
+        hotelId: 11,
+        roomId: 4,
+        guestName: "Overlap Patch Test 2",
+        checkInDate: "2027-04-10",
+        checkOutDate: "2027-04-15",
+      });
+
+      const bookingIdB = createResponseB.body.booking.id;
+      createdBookingIds.push(bookingIdB);
+
+    const patchResponse = await request(app)
+      .patch(`/bookings/${bookingIdB}`)
+      .send({
+        checkInDate: "2027-04-03",
+        checkOutDate: "2027-04-12",
+      });
+      
+      expect(patchResponse.status).toBe(400);
+
+      expect(patchResponse.body).toEqual({
+        success: false,
+        message: "Room is already booked for the selected dates",
+      });
+  });
+});
+
+
+describe("DELETE /bookings/:id", () => {
+  it("returns 404 when booking does not exist", async () => {
+    const response = await request(app).delete("/bookings/999");
+
+    expect(response.status).toBe(404);
+
+    expect(response.body).toEqual(
+      {
+        success: false,
+        message: "Booking not found"
+      }
+    );
+  });
+
+  it("deletes a booking when it exists", async () => {
+    const createResponse = await request(app)
+      .post("/bookings")
+      .send({
+        hotelId: 11,
+        roomId: 4,
+        guestName: "Delete Test",
+        checkInDate: "2027-05-01",
+        checkOutDate: "2027-05-04",
+      });
+
+    const bookingId = createResponse.body.booking.id;
+
+    const deleteResponse = await request(app).delete(`/bookings/${bookingId}`);
+
+    const checkResponse = await request(app).get(`/bookings/${bookingId}`);
+    expect(checkResponse.status).toBe(404);
+    expect(checkResponse.body).toEqual({
+      success: false,
+      message: "Booking not found"
+    });
+
+    expect(deleteResponse.status).toBe(200);
+
+    expect(deleteResponse.body.message).toBe(
+      "Booking deleted successfully"
+    );
+    expect(deleteResponse.body.booking.id).toBe(bookingId);
+  });
+});
+
+
 afterEach(async () => {
   for (const bookingId of createdBookingIds) {
     await pool.query(
